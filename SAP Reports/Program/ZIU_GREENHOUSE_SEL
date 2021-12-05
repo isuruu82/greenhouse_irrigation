@@ -1,0 +1,60 @@
+*&---------------------------------------------------------------------*
+*& Include          ZIU_GREENHOUSE_SEL
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK a WITH FRAME TITLE TEXT-001.
+PARAMETERS : rb_wat  RADIOBUTTON GROUP gr  MODIF ID s1 USER-COMMAND cmm DEFAULT 'X',
+             rb_anly RADIOBUTTON GROUP gr MODIF ID s1 .
+SELECTION-SCREEN END OF BLOCK a.
+
+SELECTION-SCREEN BEGIN OF BLOCK b WITH FRAME TITLE TEXT-002.
+SELECT-OPTIONS: so_pline FOR zplant_lines-plant_line_id MODIF ID s2 NO-EXTENSION MATCHCODE OBJECT zplant_line,
+                so_prd FOR sy-datum NO-EXTENSION MODIF ID s2.
+SELECTION-SCREEN END OF BLOCK b.
+
+SELECTION-SCREEN BEGIN OF BLOCK c WITH FRAME TITLE TEXT-003.
+PARAMETERS : rb_dtl RADIOBUTTON GROUP gr1 DEFAULT 'X' MODIF ID s3 USER-COMMAND cmm,
+             rb_sum RADIOBUTTON GROUP gr1 MODIF ID s3.
+SELECTION-SCREEN END OF BLOCK c.
+
+INITIALIZATION.
+  DATA ev_month_begin_date TYPE d.
+  DATA ev_month_end_date   TYPE d.
+
+  CALL FUNCTION 'HR_JP_MONTH_BEGIN_END_DATE'
+    EXPORTING
+      iv_date             = sy-datum
+    IMPORTING
+      ev_month_begin_date = ev_month_begin_date
+      ev_month_end_date   = ev_month_end_date.
+
+  so_prd-low = ev_month_begin_date.
+  so_prd-high = ev_month_end_date.
+  so_prd-option = 'BT'.
+  so_prd-sign = 'I'.
+  APPEND so_prd.
+
+AT SELECTION-SCREEN OUTPUT.
+  LOOP AT SCREEN.
+    IF rb_wat = 'X'.
+      IF screen-group1 = 'S3'.
+        screen-active = '1'.
+        MODIFY SCREEN.
+      ENDIF.
+    ELSE.
+      IF screen-group1 = 'S3'.
+        screen-active = '0'.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+START-OF-SELECTION.
+  IF rb_wat = 'X'.
+    PERFORM fetch_wat_data.
+    PERFORM call_wat_form.
+  ENDIF.
+
+  IF rb_anly = 'X'.
+    PERFORM fetch_anl_data.
+    PERFORM call_anl_form.
+  ENDIF.

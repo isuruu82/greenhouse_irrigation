@@ -1,0 +1,360 @@
+*&---------------------------------------------------------------------*
+*& Include          ZIU_GREENHOUSE_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form FETCH_DATA
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM fetch_wat_data .
+
+  DATA: lv_unit_cost   TYPE dec6_2 VALUE 3,
+        lv_unit_cost_p TYPE dec6_2 VALUE 2.
+
+  DATA e_first_day TYPE sy-datum.
+  DATA e_last_day  TYPE sy-datum.
+  DATA i_month TYPE  fcmnr.
+
+*  SELECT SINGLE * FROM zcds_mm_po_comp_addrs( ccode = '1100' ) INTO @cmp_adr.
+  cmp_adr-name = 'Hayleys Agriculture Holdings Limited'.
+  cmp_adr-street = '25 Foster Lane'.
+  cmp_adr-city1 = 'Colombo 010'.
+  cmp_adr-post_code1 = '01000'.
+  cmp_adr-tel_number = '114455667'.
+  cmp_adr-fax_number = '112334567'.
+  cmp_adr-smtp_addr = 'info@agro.hayleys.com'.
+  cmp_adr-stceg = '104002773-7000'.
+
+  SELECT pline~plant_line_id, pline~line_description, plnts~name, wtr~r_date, wtr~r_time, wtr~wcount, wtr~unit_ml FROM zwater AS wtr
+    INNER JOIN zplant_lines AS pline ON pline~plant_line_id = wtr~plant_line_id AND pline~complete_flag <> 'X' AND pline~del_ind <> 'X'
+      INNER JOIN zplant AS plnts ON plnts~plant_id = pline~plant_id
+     WHERE r_date IN @so_prd INTO TABLE @DATA(lt_wtr) .
+  IF sy-subrc = 0.
+    IF rb_dtl = 'X'.
+      LOOP AT lt_wtr ASSIGNING FIELD-SYMBOL(<lfs_water>).
+        gs_line_items-plant_line = <lfs_water>-line_description.
+        gs_line_items-plant_name = <lfs_water>-name.
+        gs_line_items-r_date = <lfs_water>-r_date.
+        gs_line_items-r_time = <lfs_water>-r_time.
+        gs_line_items-amount = <lfs_water>-wcount * <lfs_water>-unit_ml.
+
+        APPEND gs_line_items TO gt_line_items.
+        CLEAR: gs_line_items.
+      ENDLOOP.
+      SORT gt_line_items BY r_date ASCENDING r_time ASCENDING.
+    ELSEIF rb_sum = 'X'.
+
+      DATA(lt_sum) = lt_wtr[].
+      SORT lt_sum BY plant_line_id r_date.
+      DELETE ADJACENT DUPLICATES FROM lt_sum COMPARING plant_line_id r_date.
+      LOOP AT lt_sum ASSIGNING FIELD-SYMBOL(<lfs_sum>).
+        LOOP AT lt_wtr ASSIGNING FIELD-SYMBOL(<lfs_water_s>) WHERE plant_line_id = <lfs_sum>-plant_line_id AND r_date = <lfs_sum>-r_date.
+          gs_line_items-plant_line = <lfs_water_s>-line_description.
+          gs_line_items-plant_name = <lfs_water_s>-name.
+          gs_line_items-r_date = <lfs_water_s>-r_date.
+          gs_line_items-r_time = <lfs_water_s>-r_time.
+          gs_line_items-amount = gs_line_items-amount + <lfs_water_s>-wcount * <lfs_water_s>-unit_ml.
+        ENDLOOP.
+        APPEND gs_line_items TO gt_line_items.
+        CLEAR: gs_line_items.
+      ENDLOOP.
+      SORT gt_line_items BY r_date ASCENDING r_time ASCENDING.
+    ENDIF.
+
+    LOOP AT gt_line_items ASSIGNING FIELD-SYMBOL(<lfs_hdr>).
+      gs_hdr_data-tot_consp = gs_hdr_data-tot_consp + <lfs_hdr>-amount.
+    ENDLOOP.
+
+    i_month = so_prd-low+4(2) - 1.
+    CALL FUNCTION 'OIL_MONTH_GET_FIRST_LAST'
+      EXPORTING
+        i_month     = i_month
+        i_year      = so_prd-low+0(4)
+      IMPORTING
+        e_first_day = e_first_day
+        e_last_day  = e_last_day
+      EXCEPTIONS
+        wrong_date  = 1
+        OTHERS      = 2.
+    IF sy-subrc = 0.
+      SELECT pline~plant_line_id, pline~line_description, plnts~name, wtr~r_date, wtr~r_time, wtr~wcount, wtr~unit_ml FROM zwater AS wtr
+         INNER JOIN zplant_lines AS pline ON pline~plant_line_id = wtr~plant_line_id AND pline~complete_flag <> 'X' AND pline~del_ind <> 'X'
+           INNER JOIN zplant AS plnts ON plnts~plant_id = pline~plant_id
+          WHERE r_date BETWEEN @e_first_day AND @e_last_day INTO TABLE @DATA(lt_wtr_p) .
+      IF sy-subrc = 0.
+        LOOP AT lt_wtr_p ASSIGNING FIELD-SYMBOL(<lfs_prv>).
+          gs_hdr_data-pv_m_consup = gs_hdr_data-pv_m_consup + ( <lfs_prv>-unit_ml * <lfs_prv>-wcount ).
+        ENDLOOP.
+      ENDIF.
+    ENDIF.
+
+    gs_hdr_data-tot_cost = gs_hdr_data-tot_consp * lv_unit_cost.
+    gs_hdr_data-consup_diff = gs_hdr_data-tot_consp - gs_hdr_data-pv_m_consup.
+    gs_hdr_data-cost_diff = gs_hdr_data-tot_cost - gs_hdr_data-pv_m_cost.
+
+    gs_hdr_data-pv_m_cost = gs_hdr_data-pv_m_consup * lv_unit_cost_p.
+  ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form CALL_FORM
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM call_wat_form .
+
+  fp_outputpar-dest = 'PDF'.
+  fp_outputpar-nodialog = 'X'.
+  fp_outputpar-preview = 'X'.
+  fp_outputpar-reqnew = 'X'.
+
+  CALL FUNCTION 'FP_JOB_OPEN'
+    CHANGING
+      ie_outputparams = fp_outputpar
+    EXCEPTIONS
+      cancel          = 1
+      usage_error     = 2
+      system_error    = 3
+      internal_error  = 4
+      OTHERS          = 5.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  CALL FUNCTION 'FP_FUNCTION_MODULE_NAME'
+    EXPORTING
+      i_name     = 'ZFORM_WATER'
+    IMPORTING
+      e_funcname = fm_name.
+  IF sy-subrc <> 0.
+    MESSAGE: 'Error in generating FM name' TYPE 'E'.
+  ENDIF.
+
+  CALL FUNCTION fm_name
+    EXPORTING
+      /1bcdwb/docparams = fp_docparams
+      cmp_add           = cmp_adr
+      header            = gs_hdr_data
+      items             = gt_line_items
+    EXCEPTIONS
+      usage_error       = 1
+      system_error      = 2
+      internal_error    = 3
+      OTHERS            = 4.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  CALL FUNCTION 'FP_JOB_CLOSE'
+    EXCEPTIONS
+      usage_error    = 1
+      system_error   = 2
+      internal_error = 3
+      OTHERS         = 4.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form FETCH_ANL_DATA
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM fetch_anl_data .
+
+  DATA: lv_temp    TYPE ztemp,
+        lv_mois    TYPE zmois,
+        lv_hum     TYPE zhum,
+        lv_harvest TYPE zde_harvest,
+        count      TYPE int4.
+
+*  SELECT SINGLE * FROM zcds_mm_po_comp_addrs( ccode = '1100' ) INTO @cmp_adr.
+  cmp_adr_anl-name = 'Hayleys Agriculture Holdings Limited'.
+  cmp_adr_anl-street = '25 Foster Lane'.
+  cmp_adr_anl-city1 = 'Colombo 010'.
+  cmp_adr_anl-post_code1 = '01000'.
+  cmp_adr_anl-tel_number = '114455667'.
+  cmp_adr_anl-fax_number = '112334567'.
+  cmp_adr_anl-smtp_addr = 'info@agro.hayleys.com'.
+  cmp_adr_anl-stceg = '104002773-7000'.
+
+  SELECT pline~plant_line_id, pline~line_description, plnts~name, sval~r_date, sval~r_time, sval~temperature, sval~moisture , sval~humidity FROM zsensor_values AS sval
+      INNER JOIN zplant_lines AS pline ON pline~plant_line_id = sval~plant_line_id AND pline~complete_flag <> 'X' AND pline~del_ind <> 'X'
+      INNER JOIN zplant AS plnts ON plnts~plant_id = pline~plant_id
+      WHERE sval~r_date IN @so_prd AND sval~temperature > 0 AND sval~moisture > 0 AND sval~humidity > 0
+      INTO TABLE @DATA(lt_values).
+
+  DATA(lt_avg) = lt_values[].
+  SORT lt_avg BY plant_line_id r_date+4(2) .
+  DELETE ADJACENT DUPLICATES FROM lt_avg COMPARING plant_line_id r_date+4(2).
+
+  CLEAR:lv_temp, lv_mois, lv_hum.
+
+  LOOP AT lt_avg ASSIGNING FIELD-SYMBOL(<lfs_avg>).
+    LOOP AT lt_values ASSIGNING FIELD-SYMBOL(<lfs_sum>) WHERE plant_line_id = <lfs_avg>-plant_line_id AND r_date+4(2) = <lfs_avg>-r_date+4(2).
+      lv_temp = lv_temp + <lfs_sum>-temperature.
+      lv_mois = lv_mois + <lfs_sum>-moisture.
+      lv_hum = lv_hum + <lfs_sum>-humidity.
+      count = count + 1.
+    ENDLOOP.
+    <lfs_avg>-temperature = lv_temp / count.
+    <lfs_avg>-moisture = lv_mois / count.
+    <lfs_avg>-humidity = lv_hum / count.
+
+    CLEAR:lv_temp, lv_mois, lv_hum, count.
+
+    gs_avg_data-plant_line = <lfs_avg>-line_description.
+    gs_avg_data-plant_name = <lfs_avg>-name.
+    gs_avg_data-period = <lfs_avg>-r_date+0(6).
+
+    gs_avg_data-avg_temp = <lfs_avg>-temperature.
+    gs_avg_data-avg_mois = <lfs_avg>-moisture.
+    gs_avg_data-avg_hum = <lfs_avg>-humidity.
+
+    APPEND gs_avg_data TO gt_avg_data.
+    CLEAR: gs_avg_data.
+  ENDLOOP.
+
+
+*  SELECT pline~plant_line_id, pline~line_description, plnts~name, zhar~r_date, zhar~harvest FROM zharvest AS zhar
+*      INNER JOIN zplant_lines AS pline ON pline~ln_index = zhar~ln_index
+*      INNER JOIN zplant AS plnts ON plnts~plant_id = pline~plant_id
+*      WHERE zhar~r_date IN @so_prd
+*      INTO TABLE @DATA(lt_har).
+*
+*  DATA(lt_ha) = lt_har[].
+*  SORT lt_ha BY plant_line_id r_date+4(2).
+*  DELETE ADJACENT DUPLICATES FROM lt_ha COMPARING plant_line_id r_date+4(2).
+*
+*  CLEAR:lv_harvest.
+*  LOOP AT lt_ha ASSIGNING FIELD-SYMBOL(<lfs_harv>).
+*    LOOP AT lt_har ASSIGNING FIELD-SYMBOL(<lfs_harvst>) WHERE plant_line_id = <lfs_harv>-plant_line_id AND r_date+4(2) = <lfs_harv>-r_date+4(2).
+*      lv_harvest = lv_harvest + <lfs_harvst>-harvest.
+*    ENDLOOP.
+*    gs_harvest_data-plant_line = <lfs_harv>-line_description.
+*    gs_harvest_data-plant_name = <lfs_harv>-name.
+*    gs_harvest_data-period = <lfs_harv>-r_date+0(6).
+*    gs_harvest_data-p_harvest = <lfs_harv>-harvest.
+*    gs_harvest_data-harvest = '123'.
+*
+*    APPEND gs_harvest_data TO gt_harvest_data.
+*    CLEAR: gs_harvest_data.
+*  ENDLOOP.
+
+
+  CLEAR:lv_temp, lv_mois, lv_hum.
+
+  SELECT pline~plant_line_id, pline~line_description, plnts~name, sval~r_date, sval~r_time, sval~temperature, sval~moisture , sval~humidity FROM zsensor_values AS sval
+      INNER JOIN zplant_lines AS pline ON pline~plant_line_id = sval~plant_line_id AND pline~complete_flag <> 'X' AND pline~del_ind <> 'X'
+      INNER JOIN zplant AS plnts ON plnts~plant_id = pline~plant_id
+      WHERE sval~r_date IN @so_prd AND sval~temperature > 0 AND sval~moisture > 0 AND sval~humidity > 0
+        INTO TABLE @DATA(lt_senss).
+
+  DATA(lt_sens) = lt_values[].
+  SORT lt_sens BY plant_line_id r_date .
+  DELETE ADJACENT DUPLICATES FROM lt_sens COMPARING plant_line_id r_date.
+
+  LOOP AT lt_sens ASSIGNING FIELD-SYMBOL(<lfs_sen>).
+    LOOP AT lt_senss ASSIGNING FIELD-SYMBOL(<lfs_ssum>) WHERE plant_line_id = <lfs_sen>-plant_line_id AND r_date = <lfs_sen>-r_date.
+      lv_temp = lv_temp + <lfs_ssum>-temperature.
+      lv_mois = lv_mois + <lfs_ssum>-moisture.
+      lv_hum = lv_hum + <lfs_ssum>-humidity.
+      count = count + 1.
+    ENDLOOP.
+    <lfs_sen>-temperature = lv_temp / count.
+    <lfs_sen>-moisture = lv_mois / count.
+    <lfs_sen>-humidity = lv_hum / count.
+
+    CLEAR:lv_temp, lv_mois, lv_hum, count.
+
+    gs_snsor_data-plant_line = <lfs_sen>-line_description.
+    gs_snsor_data-plant_name = <lfs_sen>-name.
+    gs_snsor_data-r_date = <lfs_sen>-r_date.
+
+    gs_snsor_data-temp = <lfs_sen>-temperature.
+    gs_snsor_data-mois = <lfs_sen>-moisture.
+    gs_snsor_data-hum = <lfs_sen>-humidity.
+
+    APPEND gs_snsor_data TO gt_snsor_data.
+    CLEAR: gs_snsor_data.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form CALL_ANL_FORM
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM call_anl_form .
+  fp_outputpar-dest = 'PDF'.
+  fp_outputpar-nodialog = 'X'.
+  fp_outputpar-preview = 'X'.
+  fp_outputpar-reqnew = 'X'.
+
+  CALL FUNCTION 'FP_JOB_OPEN'
+    CHANGING
+      ie_outputparams = fp_outputpar
+    EXCEPTIONS
+      cancel          = 1
+      usage_error     = 2
+      system_error    = 3
+      internal_error  = 4
+      OTHERS          = 5.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  CALL FUNCTION 'FP_FUNCTION_MODULE_NAME'
+    EXPORTING
+      i_name     = 'ZGH_ANLYSIS'
+    IMPORTING
+      e_funcname = fm_name.
+  IF sy-subrc <> 0.
+    MESSAGE: 'Error in generating FM name' TYPE 'E'.
+  ENDIF.
+
+  CALL FUNCTION fm_name
+    EXPORTING
+      /1bcdwb/docparams = fp_docparams
+      cmp_add           = cmp_adr_anl
+      avg               = gt_avg_data
+      sensor            = gt_snsor_data
+      harvest           = gt_harvest_data
+    EXCEPTIONS
+      usage_error       = 1
+      system_error      = 2
+      internal_error    = 3
+      OTHERS            = 4.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  CALL FUNCTION 'FP_JOB_CLOSE'
+    EXCEPTIONS
+      usage_error    = 1
+      system_error   = 2
+      internal_error = 3
+      OTHERS         = 4.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.

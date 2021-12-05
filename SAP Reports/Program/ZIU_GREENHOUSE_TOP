@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Include          ZIU_GREENHOUSE_TOP
+*&---------------------------------------------------------------------*
+
+*Common Variables
+TABLES: zplant_lines.
+
+DATA: fp_outputpar TYPE sfpoutputparams,
+      fp_docparams TYPE sfpdocparams.
+DATA: fm_name  TYPE rs38l_fnam.
+
+*Water Report Variables
+DATA: cmp_adr       TYPE zcds_mm_po_comp_addrs,
+      gt_line_items TYPE zgh_tt_water,
+      gs_line_items TYPE zgh_s_water,
+      gs_hdr_data   TYPE zgh_s_water_hdr.
+
+*Analysis Report Variables
+DATA: cmp_adr_anl     TYPE zcds_mm_po_comp_addrs,
+      gt_harvest_data TYPE zgh_tt_hrvst,
+      gs_harvest_data TYPE zgh_s_hrvst,
+      gt_avg_data     TYPE zgh_tt_avg,
+      gs_avg_data     TYPE zgh_s_avg,
+      gt_snsor_data   TYPE zgh_tt_sen_val,
+      gs_snsor_data   TYPE zgh_s_sen_val.

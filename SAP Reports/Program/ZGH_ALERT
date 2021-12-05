@@ -1,0 +1,708 @@
+*&---------------------------------------------------------------------*
+*& Report ZGH_ALERT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zgh_alert.
+
+TYPES:t_document_data TYPE sodocchgi1,
+      t_packing_list  TYPE sopcklsti1,
+      t_body_msg      TYPE solisti1,
+      t_receivers     TYPE somlreci1.
+"Workareas
+DATA :w_document_data TYPE t_document_data,
+      w_packing_list  TYPE t_packing_list,
+      w_body_msg      TYPE t_body_msg,
+      w_receivers     TYPE t_receivers,
+      lt_attachment   TYPE STANDARD TABLE OF solisti1  WITH HEADER LINE.
+
+"Internal Tables
+DATA :
+  i_packing_list TYPE STANDARD TABLE OF t_packing_list,
+  i_body_msg     TYPE STANDARD TABLE OF t_body_msg,
+  i_receivers    TYPE STANDARD TABLE OF t_receivers,
+  g_tab_lines    TYPE i,
+  g_sent_to_all  TYPE sonv-flag,
+  success        TYPE flag.
+
+"Email Variables
+DATA: lv_doc_type TYPE auart,
+      lv_org      TYPE vkorg,
+      lv_channel  TYPE vtweg,
+      lv_division TYPE spart,
+      lv_cus_grp  TYPE kdgrp,
+      lv_utilz    TYPE zcbper,
+      lv_avlb     TYPE char18.
+
+CONSTANTS: lv_coma TYPE c VALUE `'`,
+           lv_ob   TYPE c VALUE '(',
+           lv_cb   TYPE c VALUE ')'.
+
+CONSTANTS:con_tab  TYPE c VALUE cl_abap_char_utilities=>horizontal_tab,
+          con_cret TYPE c VALUE cl_abap_char_utilities=>cr_lf.
+
+CLEAR: success.
+
+SELECT pl~plant_id, pl~plant_line_id , pl~line_description, pl~created, pl~pest_date , plants~pest, plants~crop
+  FROM zplant_lines AS pl
+  INNER JOIN zplant AS plants ON plants~plant_id = pl~plant_id
+  WHERE pl~del_ind <> 'X' AND pl~complete_flag <> 'X'
+  INTO TABLE @DATA(lt_alert).
+
+LOOP AT lt_alert ASSIGNING FIELD-SYMBOL(<lfs_mail>).
+  DATA i_idate TYPE sy-datum.
+  DATA i_time  TYPE mara-mhdhb.
+  DATA i_iprkz TYPE mara-iprkz.
+  DATA i_rdmhd TYPE mara-rdmhd.
+  DATA o_idate TYPE sy-datum.
+  i_idate = <lfs_mail>-pest_date.
+  i_time = <lfs_mail>-pest.
+  i_iprkz = '1'.
+
+  CALL FUNCTION 'ADD_TIME_TO_DATE'
+    EXPORTING
+      i_idate               = i_idate
+      i_time                = i_time
+      i_iprkz               = i_iprkz
+      i_rdmhd               = i_rdmhd
+    IMPORTING
+      o_idate               = o_idate
+    EXCEPTIONS
+      invalid_period        = 1
+      invalid_round_up_rule = 2
+      internal_error        = 3
+      OTHERS                = 4.
+  IF sy-subrc = 0.
+
+    DATA i_date_from    TYPE vtbbewe-dbervon.
+    DATA i_date_to      TYPE vtbbewe-dberbis.
+    DATA s_days         TYPE string.
+    DATA e_days         TYPE vtbbewe-atage.
+
+    i_date_from = sy-datum.
+    i_date_to = o_idate.
+
+    CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+      EXPORTING
+        i_date_from    = i_date_from
+        i_date_to      = i_date_to
+        i_flg_round_up = 'X'
+      IMPORTING
+        e_days         = e_days.
+    s_days = e_days.
+
+    IF e_days < 6 AND e_days > 0.
+      "Body of the mail
+      w_document_data-obj_name = 'MAIL_TO_HEAD'.
+      w_document_data-obj_descr = 'SAP System Notification'.
+
+      w_body_msg-line = '<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'xmlns="http://www.w3.org/TR/REC-html40">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<head>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<meta http-equiv="Content-Type" content="text/html; charset=us-ascii">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<meta name="Generator" content="Microsoft Word 15 (filtered medium)">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<style><!--'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '/* Font Definitions */'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@font-face'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{font-family:"Cambria Math";'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'panose-1:2 4 5 3 5 4 6 3 2 4;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@font-face'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{font-family:"Calibri Light";'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'panose-1:2 15 3 2 2 2 4 3 2 4;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@font-face'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{font-family:Calibri;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'panose-1:2 15 5 2 2 2 4 3 2 4;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '/* Style Definitions */'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'p.MsoNormal, li.MsoNormal, DIV.MsoNormal'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{MARGIN:0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN-bottom:.0001pt;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-SIZE:11.0pt;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Calibri",sans-serif;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'a:link, span.MsoHyperlink'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-priority:99;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:#0563C1;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'TEXT-decoration:underline;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'a:visited, span.MsoHyperlinkFollowed'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-priority:99;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:#954F72;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'TEXT-decoration:underline;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'p.msonormal0, li.msonormal0, DIV.msonormal0'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-name:msonormal;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'mso-MARGIN-top-alt:auto;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN-right:0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'mso-MARGIN-bottom-alt:auto;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN-LEFT:0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-SIZE:12.0pt;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Times New Roman",serif;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'span.EmailStyle18'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-TYPE:personal;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Calibri",sans-serif;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:windowtext;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'span.EmailStyle19'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-TYPE:personal-reply;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Calibri",sans-serif;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:#1F497D;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '.MsoChpDefault'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-TYPE:EXPORT-only;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-SIZE:10.0pt;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@PAGE WordSection1'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{SIZE:8.5in 11.0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN:1.0in 1.0in 1.0in 1.0in;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'DIV.WordSection1'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{PAGE:WordSection1;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '--></style>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '</head>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<body lang="EN-US" link="#0563C1" vlink="#954F72">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Dear User,<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      CONCATENATE '<p CLASS="MsoNormal"><span style="color:#1F4E79">Please note that Pest Control Apply date will reach in' s_days 'days.' INTO w_body_msg-line SEPARATED BY space.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Kindly take the necessary action<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Warm Regards,<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">SAP <o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '</body>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '</html>'.
+      APPEND w_body_msg TO i_body_msg.
+
+      "Write Packing List for Body
+      DESCRIBE TABLE i_body_msg LINES g_tab_lines.
+      w_packing_list-head_start = 1.
+      w_packing_list-head_num = 0.
+      w_packing_list-body_start = 1.
+      w_packing_list-body_num = g_tab_lines.
+      w_packing_list-doc_type = 'HTML'.
+      APPEND w_packing_list TO i_packing_list.
+      CLEAR w_packing_list.
+
+      "Receivers List.
+      w_receivers-rec_type = 'U'. "Internet address
+      w_receivers-receiver = 'isuru.udayanga@rockland.lk'.
+      w_receivers-com_type = 'INT'.
+      w_receivers-notif_del = 'X'.
+      w_receivers-notif_ndel = 'X'.
+      APPEND w_receivers TO i_receivers .
+      CLEAR:w_receivers.
+
+      "Function module to send mail to Recipients
+      CALL FUNCTION 'SO_NEW_DOCUMENT_ATT_SEND_API1'
+        EXPORTING
+          document_data              = w_document_data
+          put_in_outbox              = 'X'
+          commit_work                = 'X'
+        IMPORTING
+          sent_to_all                = g_sent_to_all
+        TABLES
+          packing_list               = i_packing_list
+          contents_txt               = i_body_msg
+          contents_bin               = lt_attachment
+          receivers                  = i_receivers
+        EXCEPTIONS
+          too_many_receivers         = 1
+          document_not_sent          = 2
+          document_type_not_exist    = 3
+          operation_no_authorization = 4
+          parameter_error            = 5
+          x_error                    = 6
+          enqueue_error              = 7
+          OTHERS                     = 8.
+
+      FREE: w_document_data, i_packing_list, i_body_msg, lt_attachment, i_receivers.
+      IF e_days = 0.
+        UPDATE zplant_lines SET pest_date = sy-datum
+        WHERE plant_line_id = <lfs_mail>-plant_line_id AND del_ind <> 'X' AND complete_flag <> 'X'.
+      ENDIF.
+    ENDIF.
+
+  ENDIF.
+
+ENDLOOP.
+
+LOOP AT lt_alert ASSIGNING FIELD-SYMBOL(<lfs_mail1>).
+
+  CLEAR: i_idate, i_time, i_iprkz, i_rdmhd, o_idate.
+  i_idate = <lfs_mail1>-created.
+  i_time = <lfs_mail1>-crop.
+  i_iprkz = '1'.
+
+  CALL FUNCTION 'ADD_TIME_TO_DATE'
+    EXPORTING
+      i_idate               = i_idate
+      i_time                = i_time
+      i_iprkz               = i_iprkz
+      i_rdmhd               = i_rdmhd
+    IMPORTING
+      o_idate               = o_idate
+    EXCEPTIONS
+      invalid_period        = 1
+      invalid_round_up_rule = 2
+      internal_error        = 3
+      OTHERS                = 4.
+  IF sy-subrc = 0.
+
+    CLEAR: i_date_from, i_date_to, s_days, e_days.
+
+    i_date_from = sy-datum.
+    i_date_to = o_idate.
+
+    CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+      EXPORTING
+        i_date_from    = i_date_from
+        i_date_to      = i_date_to
+        i_flg_round_up = 'X'
+      IMPORTING
+        e_days         = e_days.
+    s_days = e_days.
+
+    IF e_days < 6 AND e_days > 0.
+      "Body of the mail
+      w_document_data-obj_name = 'MAIL_TO_HEAD'.
+      w_document_data-obj_descr = 'SAP System Notification'.
+
+      w_body_msg-line = '<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'xmlns="http://www.w3.org/TR/REC-html40">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<head>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<meta http-equiv="Content-Type" content="text/html; charset=us-ascii">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<meta name="Generator" content="Microsoft Word 15 (filtered medium)">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<style><!--'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '/* Font Definitions */'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@font-face'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{font-family:"Cambria Math";'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'panose-1:2 4 5 3 5 4 6 3 2 4;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@font-face'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{font-family:"Calibri Light";'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'panose-1:2 15 3 2 2 2 4 3 2 4;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@font-face'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{font-family:Calibri;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'panose-1:2 15 5 2 2 2 4 3 2 4;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '/* Style Definitions */'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'p.MsoNormal, li.MsoNormal, DIV.MsoNormal'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{MARGIN:0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN-bottom:.0001pt;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-SIZE:11.0pt;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Calibri",sans-serif;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'a:link, span.MsoHyperlink'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-priority:99;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:#0563C1;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'TEXT-decoration:underline;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'a:visited, span.MsoHyperlinkFollowed'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-priority:99;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:#954F72;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'TEXT-decoration:underline;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'p.msonormal0, li.msonormal0, DIV.msonormal0'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-name:msonormal;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'mso-MARGIN-top-alt:auto;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN-right:0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'mso-MARGIN-bottom-alt:auto;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN-LEFT:0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-SIZE:12.0pt;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Times New Roman",serif;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'span.EmailStyle18'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-TYPE:personal;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Calibri",sans-serif;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:windowtext;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'span.EmailStyle19'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-TYPE:personal-reply;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-family:"Calibri",sans-serif;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'COLOR:#1F497D;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '.MsoChpDefault'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{mso-style-TYPE:EXPORT-only;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'font-SIZE:10.0pt;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '@PAGE WordSection1'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{SIZE:8.5in 11.0in;'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'MARGIN:1.0in 1.0in 1.0in 1.0in;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = 'DIV.WordSection1'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '{PAGE:WordSection1;}'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '--></style>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '</head>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<body lang="EN-US" link="#0563C1" vlink="#954F72">'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Dear User,<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      CONCATENATE '<p CLASS="MsoNormal"><span style="color:#1F4E79">Please note that Harvesting date will reach in' s_days 'days.' INTO w_body_msg-line SEPARATED BY space.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Kindly take the necessary action<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Warm Regards,<o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">SAP <o:p></o:p></span></p>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '</body>'.
+      APPEND w_body_msg TO i_body_msg.
+      w_body_msg-line = '</html>'.
+      APPEND w_body_msg TO i_body_msg.
+
+      "Write Packing List for Body
+      DESCRIBE TABLE i_body_msg LINES g_tab_lines.
+      w_packing_list-head_start = 1.
+      w_packing_list-head_num = 0.
+      w_packing_list-body_start = 1.
+      w_packing_list-body_num = g_tab_lines.
+      w_packing_list-doc_type = 'HTML'.
+      APPEND w_packing_list TO i_packing_list.
+      CLEAR w_packing_list.
+
+      "Receivers List.
+      w_receivers-rec_type = 'U'. "Internet address
+      w_receivers-receiver = 'isuru.udayanga@rockland.lk'.
+      w_receivers-com_type = 'INT'.
+      w_receivers-notif_del = 'X'.
+      w_receivers-notif_ndel = 'X'.
+      APPEND w_receivers TO i_receivers .
+      CLEAR:w_receivers.
+
+      "Function module to send mail to Recipients
+      CALL FUNCTION 'SO_NEW_DOCUMENT_ATT_SEND_API1'
+        EXPORTING
+          document_data              = w_document_data
+          put_in_outbox              = 'X'
+         commit_work                = 'X'
+  IMPORTING
+         sent_to_all                = g_sent_to_all
+        TABLES
+          packing_list               = i_packing_list
+          contents_txt               = i_body_msg
+          contents_bin               = lt_attachment
+          receivers                  = i_receivers
+        EXCEPTIONS
+          too_many_receivers         = 1
+          document_not_sent          = 2
+          document_type_not_exist    = 3
+          operation_no_authorization = 4
+          parameter_error            = 5
+          x_error                    = 6
+          enqueue_error              = 7
+          OTHERS                     = 8.
+      FREE: w_document_data, i_packing_list, i_body_msg, lt_attachment, i_receivers.
+    ENDIF.
+
+  ENDIF.
+
+ENDLOOP.
+
+MESSAGE 'Emails Sent Successfully' TYPE 'I' DISPLAY LIKE 'S'.
+
+
+
+
+
+*"Body of the mail
+*w_document_data-obj_name = 'MAIL_TO_HEAD'.
+*w_document_data-obj_descr = 'SAP System Notification'.
+*
+*w_body_msg-line = '<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'xmlns="http://www.w3.org/TR/REC-html40">'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<head>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<meta http-equiv="Content-Type" content="text/html; charset=us-ascii">'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<meta name="Generator" content="Microsoft Word 15 (filtered medium)">'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<style><!--'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '/* Font Definitions */'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '@font-face'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{font-family:"Cambria Math";'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'panose-1:2 4 5 3 5 4 6 3 2 4;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '@font-face'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{font-family:"Calibri Light";'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'panose-1:2 15 3 2 2 2 4 3 2 4;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '@font-face'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{font-family:Calibri;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'panose-1:2 15 5 2 2 2 4 3 2 4;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '/* Style Definitions */'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'p.MsoNormal, li.MsoNormal, DIV.MsoNormal'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{MARGIN:0in;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'MARGIN-bottom:.0001pt;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-SIZE:11.0pt;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-family:"Calibri",sans-serif;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'a:link, span.MsoHyperlink'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{mso-style-priority:99;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'COLOR:#0563C1;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'TEXT-decoration:underline;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'a:visited, span.MsoHyperlinkFollowed'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{mso-style-priority:99;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'COLOR:#954F72;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'TEXT-decoration:underline;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'p.msonormal0, li.msonormal0, DIV.msonormal0'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{mso-style-name:msonormal;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'mso-MARGIN-top-alt:auto;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'MARGIN-right:0in;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'mso-MARGIN-bottom-alt:auto;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'MARGIN-LEFT:0in;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-SIZE:12.0pt;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-family:"Times New Roman",serif;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'span.EmailStyle18'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{mso-style-TYPE:personal;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-family:"Calibri",sans-serif;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'COLOR:windowtext;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'span.EmailStyle19'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{mso-style-TYPE:personal-reply;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-family:"Calibri",sans-serif;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'COLOR:#1F497D;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '.MsoChpDefault'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{mso-style-TYPE:EXPORT-only;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'font-SIZE:10.0pt;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '@PAGE WordSection1'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{SIZE:8.5in 11.0in;'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'MARGIN:1.0in 1.0in 1.0in 1.0in;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = 'DIV.WordSection1'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '{PAGE:WordSection1;}'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '--></style>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '</head>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<body lang="EN-US" link="#0563C1" vlink="#954F72">'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Dear User,<o:p></o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Please note that below budget line has reached the assigned notification limit.'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<o:p></o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Kindly take the necessary action<o:p></o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79"><o:p>&nbsp;</o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">Warm Regards,<o:p></o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '<p CLASS="MsoNormal"><span style="color:#1F4E79">SAP <o:p></o:p></span></p>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '</body>'.
+*APPEND w_body_msg TO i_body_msg.
+*w_body_msg-line = '</html>'.
+*APPEND w_body_msg TO i_body_msg.
+*
+*"Write Packing List for Body
+*DESCRIBE TABLE i_body_msg LINES g_tab_lines.
+*w_packing_list-head_start = 1.
+*w_packing_list-head_num = 0.
+*w_packing_list-body_start = 1.
+*w_packing_list-body_num = g_tab_lines.
+*w_packing_list-doc_type = 'HTML'.
+*APPEND w_packing_list TO i_packing_list.
+*CLEAR w_packing_list.
+*
+*"Receivers List.
+*w_receivers-rec_type = 'U'. "Internet address
+*w_receivers-receiver = 'isuru.udayanga@rockland.lk'.
+*w_receivers-com_type = 'INT'.
+*w_receivers-notif_del = 'X'.
+*w_receivers-notif_ndel = 'X'.
+*APPEND w_receivers TO i_receivers .
+*CLEAR:w_receivers.
+*
+*"Function module to send mail to Recipients
+*CALL FUNCTION 'SO_NEW_DOCUMENT_ATT_SEND_API1'
+*  EXPORTING
+*    document_data              = w_document_data
+*    put_in_outbox              = 'X'
+**   commit_work                = 'X'
+**  IMPORTING
+**   sent_to_all                = g_sent_to_all
+*  TABLES
+*    packing_list               = i_packing_list
+*    contents_txt               = i_body_msg
+*    contents_bin               = lt_attachment
+*    receivers                  = i_receivers
+*  EXCEPTIONS
+*    too_many_receivers         = 1
+*    document_not_sent          = 2
+*    document_type_not_exist    = 3
+*    operation_no_authorization = 4
+*    parameter_error            = 5
+*    x_error                    = 6
+*    enqueue_error              = 7
+*    OTHERS                     = 8.

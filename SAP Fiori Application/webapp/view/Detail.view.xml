@@ -1,0 +1,46 @@
+<mvc:View xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc" xmlns:semantic="sap.m.semantic" xmlns:footerbar="sap.ushell.ui.footerbar" controllerName="ZGH.controller.Detail">
+	<semantic:DetailPage id="page" navButtonPress="onNavBack" title="{i18n>detailTitle}" busy="{detailView>/busy}" busyIndicatorDelay="{detailView>/delay}" floatingFooter="true" showNavButton="true">
+		<semantic:content>
+			<ObjectHeader id="objectHeader" title="{LINE_DESCRIPTION}" number="{ path: 'WTR_LVL', formatter: '.formatter.currencyValue' }" numberUnit="Soil Moisture Percentage" backgroundDesign="Solid"/>
+			<IconTabBar id="iconTabBar" class="sapUiResponsiveContentPadding">
+				<items>
+					<IconTabFilter id="iconTabBarFilter1" icon="sap-icon://hint" tooltip="{i18n>detailIconTabBarInfo}">
+						<content>
+							<DisplayListItem label="Plant Line" value="{PLANT_LINE_ID}" id="__item3"/>
+							<DisplayListItem label="Plant Name" value="{NAME}" id="__item4"/>
+							<DisplayListItem label="Plant Type" value="{PLANT_TYPE}" id="__item5"/>
+							<DisplayListItem label="Assigned User" value="{USER_NAME}" id="__item6"/>
+							<DisplayListItem label="Current Temperature" value="{TEMPERATURE}" id="__item7"/>
+							<DisplayListItem label="Current Humidity" value="{HUMIDITY}" id="__item8"/>
+							<DisplayListItem label="Current Soil Moisture" value="{MOISTURE}" id="__item9"/>
+							<DisplayListItem label="Updated Date" value="{RDate}" id="__item10"/>
+							<DisplayListItem label="Updated Time" value="{RTime}" id="__item11"/>
+						</content>
+					</IconTabFilter>
+					<IconTabFilter id="iconTabBarFilter2" icon="sap-icon://detail-view" tooltip="{i18n>detailIconTabBarAttachments}">
+					    <content>
+					        <DisplayListItem label="Average Temperature" value="{AVG_TEMPERATURE}" id="__item13"/>
+					        <DisplayListItem label="Average Humidity" value="{AVG_HUMIDITY}" id="__item14"/>
+					        <DisplayListItem label="Average Soil Moisture" value="{AVG_MOISTURE}" id="__item15"/>
+					    </content>
+					</IconTabFilter>
+				</items>
+			</IconTabBar>
+		</semantic:content>
+		<semantic:editAction>
+			<!--<semantic:EditAction id="edit" press="onEdit"/>-->
+		</semantic:editAction>
+		<semantic:customFooterContent>
+			<!--<Button enabled="true" id="deleteButton" press="onDelete" text="Delete"/>-->
+		</semantic:customFooterContent>
+		<semantic:sendEmailAction>
+			<semantic:SendEmailAction id="shareEmail" press="onShareEmailPress"/>
+		</semantic:sendEmailAction>
+		<semantic:shareInJamAction>
+			<semantic:ShareInJamAction id="shareInJam" visible="{FLP>/isShareInJamActive}" press="onShareInJamPress"/>
+		</semantic:shareInJamAction>
+		<semantic:saveAsTileAction>
+			<footerbar:AddBookmarkButton id="shareTile" title="{detailView>/saveAsTileTitle}"/>
+		</semantic:saveAsTileAction>
+	</semantic:DetailPage>
+</mvc:View>
