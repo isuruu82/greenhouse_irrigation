@@ -1,0 +1,64 @@
+﻿<Window x:Class="Watering_System.User_account"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Watering_System"
+        mc:Ignorable="d"
+        Title="User_account" MouseDown="Window_MouseDown" Height="270" Width="250" ResizeMode="NoResize" Background="White" WindowStyle="None" AllowsTransparency="True" WindowStartupLocation="CenterScreen" >
+    <Grid>
+        <Rectangle >
+            <Rectangle.Fill>
+                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                    <LinearGradientBrush.RelativeTransform>
+                        <TransformGroup>
+                            <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                            <SkewTransform CenterY="0.5" CenterX="0.5"/>
+                            <RotateTransform CenterY="0.5" CenterX="0.5"/>
+                            <TranslateTransform/>
+                        </TransformGroup>
+                    </LinearGradientBrush.RelativeTransform>
+                    <GradientStop Color="#FF009E00"/>
+                    <GradientStop Color="White" Offset="1.4"/>
+                    <GradientStop Color="#99000000" Offset="0.524"/>
+                    <GradientStop Color="#DD0F7000" Offset="0.121"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <Grid >
+            <Grid.RowDefinitions>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition Height="38"></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="40"></ColumnDefinition>
+                <ColumnDefinition Width="70"></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <TextBlock HorizontalAlignment="Center" FontSize="20" FontWeight="Bold" Margin="10" Grid.RowSpan="2" Grid.ColumnSpan="4">Account Details</TextBlock>
+            <TextBlock Grid.Row="2" Grid.Column="1" Margin="5">User ID</TextBlock>
+            <TextBlock Grid.Row="3" Grid.Column="1" Margin="5">Name</TextBlock>
+            <TextBlock Grid.Row="4" Grid.Column="1" Margin="5">Email</TextBlock>
+            <TextBlock Grid.Row="5" Grid.Column="1" Margin="5">User Level</TextBlock>
+            <TextBlock Grid.Row="6" Grid.Column="1" Margin="5">Last Login</TextBlock>
+            <StackPanel Grid.Row="9" Grid.ColumnSpan="4">
+                <TextBlock HorizontalAlignment="Center" >Developed By Isuru Udayanga</TextBlock>
+                <TextBlock HorizontalAlignment="Center">MIT Individual Project</TextBlock>
+            </StackPanel>
+            <TextBlock x:Name="txt_usrid" Grid.Row="2" Grid.Column="2" Margin="5"></TextBlock>
+            <TextBlock x:Name="txt_name" Grid.Row="3" Grid.Column="2" Margin="5"></TextBlock>
+            <TextBlock x:Name="txt_email" Grid.Row="4" Grid.Column="2" Margin="5"></TextBlock>
+            <TextBlock x:Name="txt_level" Grid.Row="5" Grid.Column="2" Margin="5"></TextBlock>
+            <TextBlock x:Name="txt_log" Grid.Row="6" Grid.Column="2" Margin="5"></TextBlock>
+        </Grid>
+    </Grid>
+</Window>

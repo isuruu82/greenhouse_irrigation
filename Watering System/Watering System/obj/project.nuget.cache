@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "dgSpecHash": "3/p6nlKDznmXaexKJphRZ/RWz0SjHAOVuBjtI39yxfPEkp+HTxuhWDlWVVoLrPEpWavn3QXotG9Xvn6zBqSBWQ==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\isuru\\Desktop\\MIT3201\\Watering System\\Watering System\\Watering System\\Watering System.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\isuru\\.nuget\\packages\\controlzex\\5.0.0\\controlzex.5.0.0.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\jquery\\2.1.1\\jquery.2.1.1.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\mahapps.metro\\2.4.6\\mahapps.metro.2.4.6.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\materialdesign.dll\\1.0.0\\materialdesign.dll.1.0.0.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\materialdesigncolors\\2.0.1\\materialdesigncolors.2.0.1.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\materialdesignthemes\\4.1.0\\materialdesignthemes.4.1.0.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\microsoft.xaml.behaviors.wpf\\1.1.31\\microsoft.xaml.behaviors.wpf.1.1.31.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\modernuicharts.wpf.beta\\0.9.1\\modernuicharts.wpf.beta.0.9.1.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\sampledependency\\1.0.0\\sampledependency.1.0.0.nupkg.sha512",
+    "C:\\Users\\isuru\\.nuget\\packages\\wpftoolkit\\3.5.50211.1\\wpftoolkit.3.5.50211.1.nupkg.sha512"
+  ],
+  "logs": []
+}
